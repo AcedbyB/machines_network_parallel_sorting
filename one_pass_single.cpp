@@ -44,6 +44,7 @@ int main(int argc, char** argv) {
     // write to the destination file
     for(string key: keys) {
         dst_file << key_to_record[key];
+        dst_file << '\n';
     }
     dst_file.close();
 
