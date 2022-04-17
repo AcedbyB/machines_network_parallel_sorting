@@ -1,4 +1,12 @@
+# test
 gensort*
 *test*
+
+# environment
+.vscode
+
+# binaries & outputs
 one_pass_single
 one_pass_parallel
+merge
+merge_output.txt
