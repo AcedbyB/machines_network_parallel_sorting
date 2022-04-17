@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <assert.h>
 
+// #define DEBUG
+
 #define UNLIKELY(x)     __builtin_expect((x), 0)
 
 using namespace std;
@@ -18,28 +20,30 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    // Get all filepaths in given folder
-    cout << "--- READ FOLDER ---" << endl;
-    cout << "data folder: " << argv[1] << "\n";
+    // Check input files
+#ifdef DEBUG
+    cout << "--- READ INPUT FILES ---" << endl;
+#endif
+
     vector<string> filepaths;
     for (const auto &entry : filesystem::directory_iterator(argv[1])) {
         filepaths.push_back(entry.path());
     }
 
-    // Create output file
-    cout << "--- CREATE EMPTY OUTPUT FILE ---" << endl;
-
-
     // Initialize file readers
+#ifdef DEBUG
     cout << "--- INIT ---" << endl;
+#endif
+
     vector<istream*> files;
     vector<filebuf*> fbs;
     vector<char*> lines;
     vector<bool> file_valid_flags;
 
     for (int i = 0; i < filepaths.size(); i++) {
+#ifdef DEBUG
         cout << filepaths[i] << endl;
-
+#endif
         // init file streams
         fbs.push_back(new filebuf);
         fbs[i]->pubsetbuf(new char[buffer_size], buffer_size);
@@ -55,13 +59,18 @@ int main(int argc, char* argv[]) {
         lines.push_back(new char[100]);
         file_valid_flags.push_back(false);
         if (files[i]->getline(lines[i], 100)) {
+#ifdef DEBUG
             cout << lines[i] << endl;
+#endif
             file_valid_flags[i] = true;
         }
     }
 
     // Merge
+#ifdef DEBUG
     cout << "--- MERGE ---" << endl;
+#endif
+
     string write_buffer;
     ofstream output_file ("merge_output.txt", ios::trunc);  // will overwrite existing output file
 
@@ -91,4 +100,8 @@ int main(int argc, char* argv[]) {
     }
 
     output_file.write(write_buffer.c_str(), write_buffer.size());  // write remaining buffer to output file
+
+#ifdef DEBUG
+    cout << "--- DONE ---" << endl;
+#endif
 }
