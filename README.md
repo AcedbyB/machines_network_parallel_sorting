@@ -2,15 +2,15 @@
 
 Based on paper: https://people.eecs.berkeley.edu/~culler/papers/p243-arpaci-dusseau.pdf?fbclid=IwAR0SKq4-o0fXEa8-FfWIYISrGwcgeHpxMnCgtvcqOanZ06ooHkaFKXuVV5g
 
-Note:
+### Note:
 
 Right now, in node01 and node02, we have an executable of gensort that could be used to generate samples. Read usage here: http://www.ordinal.com/gensort.html
 The file, along with some generated data files (10K, 1_million, 100_millions), is in ~/localdisk/parallel_sorting
 
-
+---
 ## merge.cpp
 
-Merges all record files in the given folder. Expects the record files to be sorted. Outputs to `merge_output.txt`.
+Merges all record files in the given folder. Expects the record files to be sorted.
 
 ### Compile:
 
@@ -18,4 +18,20 @@ g++ -std=c++17 merge.cpp -o merge
 
 ### Run:
 
-./merge <folder_to_be_merged>
+./merge [-o output_file] [-r read_buffer_size] [-w write_buffer_size] file1 [file2 file3 ...]
+
+### Options:
+
+-o: Sets output filename. Defaults to `merge_output.txt`.
+
+-r: Sets read buffer size. Defaults to `10'000'000` (~10MB).
+
+-w: Sets write buffer size. Defaults to `10'000'000` (~10MB).
+
+### Note:
+
+Actual read buffer size is guaranteed to not exceed, but can be a little lower than the given value. The given buffer size will be evenly split between the input files.
+
+Actual write buffer size is guaranteed to not exceed, but can be a little lower than the given value.
+
+---
