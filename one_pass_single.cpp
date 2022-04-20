@@ -5,8 +5,15 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
+#include <sys/time.h>
 
 using namespace std;
+
+struct timeval start;
+struct timeval finish;
+long compTime;
+double Time;
+
 
 int main(int argc, char** argv) {
     if(argc != 3) {
@@ -29,6 +36,8 @@ int main(int argc, char** argv) {
     vector<string> keys;
     unordered_map <string, string> key_to_record;   // map key to each records
 
+    gettimeofday(&start, 0); // start_timer
+
     // open and read in records from the source file
     string line;
     while ( getline (src_file, line) ) {
@@ -48,4 +57,11 @@ int main(int argc, char** argv) {
     }
     dst_file.close();
 
+	gettimeofday(&finish, 0);  // end_timer
+
+    compTime = (finish.tv_sec - start.tv_sec) * 1000000;
+	compTime = compTime + (finish.tv_usec - start.tv_usec);
+	Time = (double)compTime;
+
+    printf("Application time: %f Secs\n",(double)Time/1000000.0);
 }

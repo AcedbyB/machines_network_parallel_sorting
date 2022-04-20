@@ -6,6 +6,8 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
+#include <sys/time.h>
+
 using namespace std;
 
 unordered_map <string, string> key_to_record;   // map key to each records
@@ -13,9 +15,15 @@ char* com_buffer; int* com_number; // communication_buffer for each process
 vector<string> sending_to[256]; // records pending to be sent to other processes
 vector<string> keys;    // keys that we will sort on this process
 int num_procs, proc_id;	
+// timer variables
+struct timeval start;
+struct timeval finish;
+long compTime;
+double Time;
 
 const int NUM_NODES = 1;
 const int RECORD_LENGTH = 99;
+const string LOCALDISK_DIRECTORY = "/localdisk/parallel_sorting/";
 
 
 /* Allocate the needed arrays */
@@ -54,11 +62,11 @@ int read_into_memory(string src_file_name) {
 }
 
 
-/* Function for writing to the destination file, running by the first processor of each machine/node */
-int write_to_dst(string dst_file_name) {
-    ofstream dst_file(dst_file_name);
+/* Function for writing to the destination file(s), each process write to is corresponding proc_id */
+int write_to_dst(string directory_name) {
+    ofstream dst_file(LOCALDISK_DIRECTORY + to_string(proc_id));
     if (!dst_file.is_open()) {
-        cout << "Unable to open destination file";
+        cout << "Unable to open destination file"<<endl;
         return -1;
     }
 
@@ -72,7 +80,7 @@ int write_to_dst(string dst_file_name) {
 
 int main(int argc, char** argv) {
     if(argc != 3) {
-        cout<<"please supply paths to source and destination files (only)"<<endl;
+        cout<<"please supply paths to source and destination folder (only)"<<endl;
         return -1;
     }
 
@@ -80,6 +88,9 @@ int main(int argc, char** argv) {
     // Get world rank and size of processes
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     MPI_Comm_rank(MPI_COMM_WORLD, &proc_id);
+
+    if(proc_id == 0) gettimeofday(&start, 0); // start timer
+
     // Get the name of the processor
     char processor_name[MPI_MAX_PROCESSOR_NAME];
     int name_len;
@@ -99,20 +110,24 @@ int main(int argc, char** argv) {
         if(read_into_memory(argv[1]) == -1) return -1;
     }
 
-
+    
+    MPI_Request request;
     // communication phase
-    for(int i = 0; i < num_procs; i++) {
-        if(proc_id == i) {
+    for(int i = 0; i < NUM_NODES; i++) {
+        // if we are the first processor of our current node
+        if(proc_id == num_procs_per_node*i) {
             for(int j = 0; j < num_procs; j++) {
-                if(i == j) continue;
+                if(j == proc_id) continue;
 
                 // first, send the number of records we would send to this other rank
                 int sending_num = sending_to[j].size();
                 com_number[0] = sending_num;
+                // cout<<proc_id<< " sending to "<<j<<" "<<sending_num<< " records " << endl;
                 MPI_Send(com_number, 1, MPI_INTEGER, j, 1, MPI_COMM_WORLD);
 
                 // now we will send the actual records
                 for(string record: sending_to[j]) {
+                    sending_num--;
                     for(int index = 0; index < RECORD_LENGTH; index++) com_buffer[index] = record[index];
                     MPI_Send(com_buffer, RECORD_LENGTH, MPI_CHAR, j, 1, MPI_COMM_WORLD);
                 }
@@ -120,19 +135,18 @@ int main(int argc, char** argv) {
         }
         else {
             // receive the number of records incoming
-            MPI_Recv(com_number, 1, MPI_INTEGER, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Recv(com_number, 1, MPI_INTEGER, i*num_procs_per_node, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             int sending_num = com_number[0];
-            cout<<proc_id<< " receiving from "<<i<<" "<<sending_num<< " records " << endl;
+            // cout<<proc_id<< " receiving from "<<i*num_procs_per_node<<" "<<sending_num<< " records " << endl;
 
             // receive the actual records
             while(sending_num > 0) {
                 sending_num--;
-                MPI_Recv(com_buffer, RECORD_LENGTH, MPI_CHAR, i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                MPI_Recv(com_buffer, RECORD_LENGTH, MPI_CHAR, i*num_procs_per_node, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
                 // after receiving, push this record to our local memory 
-                string line = "";
-                for(int index = 0; index < RECORD_LENGTH; index++) line += com_buffer[index];
-                string key = line.substr(0, 10);
+                string line(&com_buffer[0], &com_buffer[0] + RECORD_LENGTH);
+                string key(&com_buffer[0], &com_buffer[0] + 10);
                 keys.push_back(key);
                 key_to_record[key] = line;
             }
@@ -143,48 +157,21 @@ int main(int argc, char** argv) {
     cout<<"SORT PHASE, "<<proc_id<< " SORTING TOTAL "<<keys.size()<< " records " << endl;
     sort(keys.begin(), keys.end());
 
-    //  gathering phase, each process will send all of its data to the first processor of each machine
-    for(int i = 1; i < num_procs_per_node; i++) {
-        if(proc_id % num_procs_per_node == i) {
-            // first, send the number of records we are holding
-            int receiver = proc_id - proc_id%num_procs_per_node; // the first processor in our node
-            int sending_num = keys.size();
-            com_number[0] = sending_num;
-            MPI_Send(com_number, 1, MPI_INTEGER, receiver, 1, MPI_COMM_WORLD);
-
-            // now send the actual records
-            for(string key: keys) {
-                string record = key_to_record[key];
-                for(int index = 0; index < RECORD_LENGTH; index++) com_buffer[index] = record[index];
-                MPI_Send(com_buffer, RECORD_LENGTH, MPI_CHAR, receiver, 1, MPI_COMM_WORLD);
-            }
-        }
-        else if (proc_id % num_procs_per_node == 0) {
-            // receive the number of records incoming
-            MPI_Recv(com_number, 1, MPI_INTEGER, proc_id + i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            int sending_num = com_number[0];
-            cout<<proc_id<< " gathering from "<<i<<" "<<sending_num<< " records " << endl;
-
-            // receive the actual records
-            while(sending_num > 0) {
-                sending_num--;
-                MPI_Recv(com_buffer, RECORD_LENGTH, MPI_CHAR, proc_id + i, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-                // after receiving, push this record to our local memory 
-                string line = "";
-                for(int index = 0; index < RECORD_LENGTH; index++) line += com_buffer[index];
-                string key = line.substr(0, 10);
-                keys.push_back(key);
-                key_to_record[key] = line;
-            }
-        }
-    }
-
-    //  write to the destination file, again should be done only by the first processor of each machine
-    if(proc_id % num_procs_per_node == 0) {
-        if(write_to_dst(argv[2]) == -1) return -1;
-    }
+    //  write to the destination file, each process writes to its own file
+    if(write_to_dst(argv[2]) == -1) return -1;
 
     // Finalize the MPI environment.
+    MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
+
+    // calculating and printing end timer
+    if(proc_id == 0) {
+        gettimeofday(&finish, 0);  // end timer
+
+        compTime = (finish.tv_sec - start.tv_sec) * 1000000;
+        compTime = compTime + (finish.tv_usec - start.tv_usec);
+        Time = (double)compTime;
+
+        printf("Application time: %f Secs\n",(double)Time/1000000.0);
+    }
 }
