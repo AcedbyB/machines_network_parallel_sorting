@@ -4,7 +4,7 @@ Based on paper: https://people.eecs.berkeley.edu/~culler/papers/p243-arpaci-duss
 
 ### Note:
 
-Right now, in every node from 01 to node02, we have an executable of gensort that could be used to generate samples. Read usage here: http://www.ordinal.com/gensort.html
+Right now, in every node from 01 to 06, we have an executable of gensort that could be used to generate samples. Read usage here: http://www.ordinal.com/gensort.html
 The file, along with some generated data files (10K, 1_million, 100_millions), is in ~/localdisk/parallel_sorting
 
 ---
