@@ -42,4 +42,5 @@ Example run command: mpic++ two_pass_parallel.cpp -o two_pass_parallel && mpirun
 ### In this case:
 1. We running on 6 hosts from node01 to node06, specified after -host
 2. We are running 8 MPI processes on each node, specified by -ppn
-3. We are reading 20 millions (/localdisk/parallel_sorting/20_mils) records from each node (120 millions in total), other data files is in the same directory (ex: /localdisk/parallel_sorting/5_mils)
+3. We are reading 20 millions (/localdisk/parallel_sorting/20_mils) records from each node (120 millions in total)
+4. other data files is in the same directory (ex: /localdisk/parallel_sorting/5_mils)
