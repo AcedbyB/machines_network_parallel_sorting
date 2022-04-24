@@ -22,12 +22,13 @@ bool eof_flag = false; // flag if we have reached the end of file
 
 // timer variables
 struct timeval start;
-struct timeval finish;
-long compTime;
+struct timeval finishSort;
+struct timeval finishAll;
+long compTime, sortTime;
 double Time;
 
 const int NUM_NODES = 6;      // how many nodes we have physically
-const int BUFFER_LIMIT = 400000;   // limit of how many records we load into memory
+const int BUFFER_LIMIT = 100000;   // limit of how many records we load into memory
 const int RECORD_LENGTH = 99;
 const string LOCALDISK_DIRECTORY = "/localdisk/parallel_sorting/";
 
@@ -49,7 +50,7 @@ void read_into_memory() {
     int records_cnt = 0;    // keeping track of how many records we have read in
     while ( getline (src_file, line) ) {
         records_cnt++;
-        // deciding the rank that this should be sent to, based on the first characters (8 bytes)
+        // deciding the rank/proc_id that this record should be sent to, based on the first characters (8 bytes)
         int dst_rank = (((int)line[0]) - 31)/range_of_keys;     // first 31 characters of ASCII is not used in our keys
         if(dst_rank != proc_id) {
             sending_to[dst_rank].push_back(line);
@@ -179,7 +180,6 @@ int main(int argc, char** argv) {
 
                     // now we will send the actual records
                     for(string record: sending_to[j]) {
-                        sending_num--;
                         for(int index = 0; index < RECORD_LENGTH; index++) com_buffer[index] = record[index];
                         MPI_Send(com_buffer, RECORD_LENGTH, MPI_CHAR, j, 1, MPI_COMM_WORLD);
                     }
@@ -216,8 +216,10 @@ int main(int argc, char** argv) {
         clear_all_memory(); 
     }
 
+    if(proc_id == 0) gettimeofday(&finishSort, 0);  // track the time it takes to sort
+
     // All runs are written to disk, now each process merge together their runs for a complete file
-    string place_holder = "./merge -o " + LOCALDISK_DIRECTORY + to_string(proc_id);
+    string place_holder = "./merge -w 1000000 -r 1000000 -o " + LOCALDISK_DIRECTORY + to_string(proc_id);
     for(int run = 1; run <= runs; run++) {
         place_holder += " " + LOCALDISK_DIRECTORY + to_string(proc_id) + "." + to_string(run);
     }
@@ -229,12 +231,19 @@ int main(int argc, char** argv) {
 
     // calculating and printing end timer
     if(proc_id == 0) {
-        gettimeofday(&finish, 0);  // end timer
+        gettimeofday(&finishAll, 0);  // end timer
 
-        compTime = (finish.tv_sec - start.tv_sec) * 1000000;
-        compTime = compTime + (finish.tv_usec - start.tv_usec);
+        sortTime = (finishSort.tv_sec - start.tv_sec) * 1000000;
+        sortTime = sortTime + (finishSort.tv_usec - start.tv_usec);
+        double formattedSortTime = (double)sortTime;
+        printf("Sort time: %f Secs\n",(double)formattedSortTime/1000000.0);
+
+        compTime = (finishAll.tv_sec - start.tv_sec) * 1000000;
+        compTime = compTime + (finishAll.tv_usec - start.tv_usec);
         Time = (double)compTime;
-
-        printf("Application time: %f Secs\n",(double)Time/1000000.0);
+        double formattedMergeTime = (double) (Time - formattedSortTime);
+        printf("Merge time: %f Secs\n",(double)formattedMergeTime/1000000.0);
+        printf("Total time: %f Secs\n",(double)Time/1000000.0);
+        
     }
 }
