@@ -10,9 +10,9 @@ using namespace std;
 
 vector<string> keys;
 unordered_map <string, string> key_to_record;   // map key to each records
-const int BUFFER_LIMIT = 5;   // limit of how many records we load into memory
+const int BUFFER_LIMIT = 1000000;   // limit of how many records we load into memory
 vector<string> tmp_files; // array of temporary files (or runs)
-int tmp_file_count = 0;   // number of temporary files
+int tmp_file_count = 0;   // number of temporary files this process has created
 const string LOCALDISK_DIRECTORY = "/localdisk/parallel_sorting/";
 
 

@@ -21,7 +21,7 @@ struct timeval finish;
 long compTime;
 double Time;
 
-const int NUM_NODES = 1;
+const int NUM_NODES = 6;
 const int RECORD_LENGTH = 99;
 const string LOCALDISK_DIRECTORY = "/localdisk/parallel_sorting/";
 
@@ -110,8 +110,9 @@ int main(int argc, char** argv) {
         if(read_into_memory(argv[1]) == -1) return -1;
     }
 
-    
-    MPI_Request request;
+    // wait for all processes to be done reading
+    MPI_Barrier(MPI_COMM_WORLD);
+
     // communication phase
     for(int i = 0; i < NUM_NODES; i++) {
         // if we are the first processor of our current node
