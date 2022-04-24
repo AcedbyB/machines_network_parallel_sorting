@@ -11,3 +11,4 @@ one_pass_parallel
 merge
 merge_output.txt
 two_pass_single
+two_pass_parallel
