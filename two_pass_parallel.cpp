@@ -43,7 +43,7 @@ void allocate_memory() {
 /* Function for reading in from memory - into the first processor of each machine/node */
 void read_into_memory() {
     // the range of keys for each processor 
-    int range_of_keys = 97/num_procs;   
+    int range_of_keys = 95/num_procs;   
 
     // open and read in records from the source file
     string line;
@@ -51,7 +51,7 @@ void read_into_memory() {
     while ( getline (src_file, line) ) {
         records_cnt++;
         // deciding the rank/proc_id that this record should be sent to, based on the first characters (8 bytes)
-        int dst_rank = (((int)line[0]) - 31)/range_of_keys;     // first 31 characters of ASCII is not used in our keys
+        int dst_rank = (((int)line[0]) - 33)/range_of_keys;     // first 33 characters of ASCII is not used in our keys
         if(dst_rank != proc_id) {
             sending_to[dst_rank].push_back(line);
         }
