@@ -10,12 +10,14 @@
 
 using namespace std;
 
+// #define DEBUG
+
 unordered_map <string, string> key_to_record;   // map key to each records
 char* com_buffer; int* com_number; // communication_buffer for each process
 vector<string> sending_to[256]; // records pending to be sent to other processes
 vector<string> keys;    // keys that we will sort on this process
 int tmp_file_count = 0;   // number of temporary runs this process has created
-int num_procs, proc_id;	
+int num_procs, proc_id;
 int needed_runs;    // how many runs will we have to create
 ifstream src_file;   // our source file object
 bool eof_flag = false; // flag if we have reached the end of file
@@ -33,6 +35,15 @@ const int RECORD_LENGTH = 99;
 const string LOCALDISK_DIRECTORY = "/localdisk/parallel_sorting/";
 
 
+/* Merge sorted files */
+void merge_files(
+    vector<string> file_paths,
+    string output_file_path = "merge_output.txt",
+    int read_buffer_size = 10'000'000,
+    int write_buffer_size = 10'000'000
+);
+
+
 /* Allocate the needed arrays */
 void allocate_memory() {
 	com_buffer = new char[100];
@@ -42,8 +53,8 @@ void allocate_memory() {
 
 /* Function for reading in from memory - into the first processor of each machine/node */
 void read_into_memory() {
-    // the range of keys for each processor 
-    int range_of_keys = 97/num_procs;   
+    // the range of keys for each processor
+    int range_of_keys = 97/num_procs;
 
     // open and read in records from the source file
     string line;
@@ -64,9 +75,9 @@ void read_into_memory() {
         if(records_cnt == BUFFER_LIMIT) break;
     }
 
-    // don't close it yet since we will need to resume the src_file object  
+    // don't close it yet since we will need to resume the src_file object
     if(records_cnt > 0) return;
-    
+
     // if last read we read nothing => we reached the end and should close the file
     src_file.close();
     eof_flag = 1;
@@ -77,7 +88,7 @@ void read_into_memory() {
 int write_to_disk(int run) {
     ofstream dst_file(LOCALDISK_DIRECTORY + to_string(proc_id) + "." + to_string(run));
     if (!dst_file.is_open()) {
-        cout << "Unable to open destination file"<<endl;
+        cout << "Unable to open destination file in proc: " << proc_id <<endl;
         return -1;
     }
 
@@ -95,9 +106,8 @@ void clear_all_memory() {
     keys.clear();
     for(int j = 0; j < num_procs; j++) {
         sending_to[j].clear();
-    }   
+    }
 }
-
 
 int main(int argc, char** argv) {
     if(argc != 2) {
@@ -112,7 +122,7 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &proc_id);
 
     // start timer
-    if(proc_id == 0) gettimeofday(&start, 0); 
+    if(proc_id == 0) gettimeofday(&start, 0);
 
     // Get the name of the processor
     char processor_name[MPI_MAX_PROCESSOR_NAME];
@@ -132,7 +142,7 @@ int main(int argc, char** argv) {
     // open the targeting file, return if something is wrong
     src_file.open (argv[1], ifstream::in);
     if (!src_file.is_open()) {
-        cout << "Unable to open source file" << endl;
+        cout << "Unable to open source file in proc: " << proc_id << endl;
         return -1;
     }
 
@@ -158,7 +168,7 @@ int main(int argc, char** argv) {
         }
 
         MPI_Barrier( MPI_COMM_WORLD );
-        
+
         // return if we no longer need to process
         if(eof_flag) break;
 
@@ -196,7 +206,7 @@ int main(int argc, char** argv) {
                     sending_num--;
                     MPI_Recv(com_buffer, RECORD_LENGTH, MPI_CHAR, i*num_procs_per_node, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-                    // after receiving, push this record to our local memory 
+                    // after receiving, push this record to our local memory
                     string line(&com_buffer[0], &com_buffer[0] + RECORD_LENGTH);
                     string key(&com_buffer[0], &com_buffer[0] + 10);
                     keys.push_back(key);
@@ -213,18 +223,18 @@ int main(int argc, char** argv) {
         if(write_to_disk(runs) == -1) return -1;
 
         // have to empty out all of our current memory to prepare for next run
-        clear_all_memory(); 
+        clear_all_memory();
     }
 
     if(proc_id == 0) gettimeofday(&finishSort, 0);  // track the time it takes to sort
 
     // All runs are written to disk, now each process merge together their runs for a complete file
-    string place_holder = "./merge -w 1000000 -r 1000000 -o " + LOCALDISK_DIRECTORY + to_string(proc_id);
+    // string place_holder = "./merge -w 1000000 -r 1000000 -o " + LOCALDISK_DIRECTORY + to_string(proc_id);
+    vector<string> file_paths;
     for(int run = 1; run <= runs; run++) {
-        place_holder += " " + LOCALDISK_DIRECTORY + to_string(proc_id) + "." + to_string(run);
+        file_paths.push_back(LOCALDISK_DIRECTORY + to_string(proc_id) + "." + to_string(run));
     }
-    char* merge_command = &place_holder[0];
-    system(merge_command);
+    merge_files(file_paths, LOCALDISK_DIRECTORY + to_string(proc_id));
 
     // Finalize the MPI environment.
     MPI_Finalize();
@@ -244,6 +254,6 @@ int main(int argc, char** argv) {
         double formattedMergeTime = (double) (Time - formattedSortTime);
         printf("Merge time: %f Secs\n",(double)formattedMergeTime/1000000.0);
         printf("Total time: %f Secs\n",(double)Time/1000000.0);
-        
+
     }
 }
