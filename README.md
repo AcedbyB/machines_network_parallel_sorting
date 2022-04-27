@@ -37,7 +37,7 @@ Actual write buffer size is guaranteed to not exceed, but can be a little lower 
 ---
 ## two_pass_parallel.cpp
 
-Example run command: `mpic++ two_pass_parallel.cpp -o two_pass_parallel && mpirun -ppn 8 -host node01,node02,node03,node04,node05,node06 ./two_pass_parallel /localdisk/parallel_sorting/20_mils` 
+Example run command: `mpic++ two_pass_parallel.cpp merge.cpp -o two_pass_parallel && mpirun -ppn 8 -host node01,node02,node03,node04,node05,node06 ./two_pass_parallel /localdisk/parallel_sorting/20_mils`
 
 ### In this case:
 1. We running on 6 hosts from node01 to node06, specified after -host
