@@ -44,3 +44,8 @@ Example run command: `mpic++ two_pass_parallel.cpp merge.cpp -o two_pass_paralle
 2. We are running 8 MPI processes on each node, specified by -ppn
 3. We are reading 20 millions (`/localdisk/parallel_sorting/20_mils`) records from each node (120 millions in total)
 4. Other data files are in the same directory (ex: `/localdisk/parallel_sorting/5_mils`)
+
+---
+## one_pass_parallel.cpp
+
+Example run command: `mpic++ one_pass_parallel.cpp -o one_pass_parallel && mpirun -ppn 8 -host node01,node02,node03,node04,node05,node06 ./one_pass_parallel /localdisk/parallel_sorting/20_mils`
