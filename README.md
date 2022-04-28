@@ -1,5 +1,7 @@
 # Parallel sorting on a network of machines
 
+By: Bao Tran, Hung Vu, Loc Bui
+
 Based on paper: https://people.eecs.berkeley.edu/~culler/papers/p243-arpaci-dusseau.pdf?fbclid=IwAR0SKq4-o0fXEa8-FfWIYISrGwcgeHpxMnCgtvcqOanZ06ooHkaFKXuVV5g
 
 ### Note:
